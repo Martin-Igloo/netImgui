@@ -180,6 +180,7 @@ NETIMGUI_API	void				Shutdown();
 //						  with blurier results.
 //						  NOTE: Not used by Dear ImGui 1.92+, unneeded with font update support.
 //=================================================================================================
+
 NETIMGUI_API	bool				ConnectToApp(const char* clientName, const char* serverHost, uint32_t serverPort=kDefaultServerPort, ThreadFunctPtr threadFunction=0, FontCreateFuncPtr FontCreateFunction=0);
 NETIMGUI_API	bool				ConnectFromApp(const char* clientName, uint32_t clientPort=kDefaultClientPort, ThreadFunctPtr threadFunction=0, FontCreateFuncPtr fontCreateFunction=0);
 
@@ -192,7 +193,10 @@ NETIMGUI_API	void				Disconnect(void);
 // True if connected to the NetImguiServer application
 //=================================================================================================
 NETIMGUI_API	bool				IsConnected(void);
-
+//=================================================================================================
+// True if there is a context (Created by Startup())
+//=================================================================================================
+NETIMGUI_API	bool				isSetup();
 //=================================================================================================
 // True if connection request is waiting to be completed. For example, while waiting for  
 // Server to reach ud after having called 'ConnectFromApp()'
