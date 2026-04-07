@@ -569,6 +569,8 @@ void ClientInfo::ContextInitialize()
 #endif
 #if !NETIMGUI_IMGUI_TEXTURES_ENABLED
 	mbFontUploaded			= false;
+	mpFontTextureData		= nullptr;	// force auto-send check to re-send font on new connection
+	mFontTextureID			= 0;
 #endif
 }
 
@@ -919,31 +921,30 @@ bool ClientInfo::TextureTrackingRem(ClientTextureID clientTextureID)
 void ClientInfo::TexturePendingServerAdd(CmdTexture& cmdTexture)
 {
 	std::lock_guard<std::mutex> guard(mPendingTexturesLock);
-	if( IsConnected() )
-	{
+	if (IsConnected()) {
 		// Find last added entry
-		CmdTexture** ppNextTexture 	= &mPendingTextures;
-		CmdTexture* pendingTexture 	= mPendingTextures;
-		while( pendingTexture != nullptr )
-		{
+		CmdTexture** ppNextTexture = &mPendingTextures;
+		CmdTexture* pendingTexture = mPendingTextures;
+		while (pendingTexture != nullptr) {
 			// Remove all unprocessed texture commands with same id
-			// (only need the latest action for create/destroy, but can have multiple update queued)
-			if(	cmdTexture.mStatus != CmdTexture::eType::Update &&
+			if (cmdTexture.mStatus != CmdTexture::eType::Update &&
 				cmdTexture.mSent == false &&
-				cmdTexture.mTextureClientID == pendingTexture->mTextureClientID )
-			{
-				// Mark as sent and un-needed (which gets it removed from tracking array and deleted later)
-				pendingTexture->mSent	= true;
-				pendingTexture->mStatus	= CmdTexture::eType::Destroy;
-				*ppNextTexture			= pendingTexture->mpNext;
+				cmdTexture.mTextureClientID == pendingTexture->mTextureClientID) {
+				pendingTexture->mSent = true;
+				pendingTexture->mStatus = CmdTexture::eType::Destroy;
+				*ppNextTexture = pendingTexture->mpNext;
+				// ppNextTexture stays — it already points to the correct next link
 			}
-			ppNextTexture	= &pendingTexture->mpNext;
-			pendingTexture 	= pendingTexture->mpNext;
+			else {
+				ppNextTexture = &pendingTexture->mpNext;
+			}
+			pendingTexture = pendingTexture->mpNext;
 		}
 
 		// Add as last element and ready to be sent
-		cmdTexture.mSent	= false;
-		*ppNextTexture		= &cmdTexture;
+		cmdTexture.mSent = false;
+		cmdTexture.mpNext = nullptr;      // terminate the list — prevent stale pointer cycle
+		*ppNextTexture = &cmdTexture;
 	}
 }
 
