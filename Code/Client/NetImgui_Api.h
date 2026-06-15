@@ -234,6 +234,7 @@ NETIMGUI_API	bool				IsDrawingRemote(void);
 NETIMGUI_API	void				SendDataTexture(ImTextureID textureId, void* pData, uint16_t width, uint16_t height, eTexFormat format, uint32_t dataSize=0);
 #if NETIMGUI_IMGUI_TEXTURES_ENABLED
 NETIMGUI_API	void				SendDataTexture(const ImTextureRef& textureRef, void* pData, uint16_t width, uint16_t height, eTexFormat format, uint32_t dataSize=0);
+NETIMGUI_API	bool				IsTexturePendingSend(const ImTextureRef& textureRef);	// True if a previous SendDataTexture for this texture is still queued (not yet transmitted to server)
 #endif
 
 //=================================================================================================

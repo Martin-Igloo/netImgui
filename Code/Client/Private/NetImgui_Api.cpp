@@ -409,6 +409,25 @@ void SendDataTexture(const ImTextureRef& textureRef, void* pData, uint16_t width
 		client.TextureDestroyCmdAdd(clientTexID);
 	}
 }
+
+//=================================================================================================
+bool IsTexturePendingSend(const ImTextureRef& textureRef)
+//=================================================================================================
+{
+	if (!gpClientInfo) return false;
+	Client::ClientInfo& client	= *gpClientInfo;
+	ClientTextureID clientTexID	= ConvertToClientTexID(textureRef);
+
+	std::lock_guard<std::mutex> guard(client.mTextureServerLock);
+	CmdTexture* pEntry = client.mTextureServerPending;
+	while (pEntry)
+	{
+		if (pEntry->mTextureClientID == clientTexID)
+			return true;
+		pEntry = pEntry->mpNext;
+	}
+	return false;
+}
 #endif //NETIMGUI_IMGUI_TEXTURES_ENABLED
 
 //=================================================================================================
