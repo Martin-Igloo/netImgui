@@ -155,6 +155,11 @@ void Client::ProcessPendingTextureCmds()
 					tex->UsedRect.y = ImMin(tex->UsedRect.y, req.y);
 					tex->UsedRect.w = (unsigned short)(ImMax(tex->UsedRect.x + tex->UsedRect.w, req.x + req.w) - tex->UsedRect.x);
 					tex->UsedRect.h = (unsigned short)(ImMax(tex->UsedRect.y + tex->UsedRect.h, req.y + req.h) - tex->UsedRect.y);
+				// Clear entries the DX11 backend has already processed (Status==OK).
+				// Without this, Updates[] accumulates one entry per cycle, causing O(N)
+				// UpdateSubresource calls and growing staging buffer allocations in system RAM.
+				if (tex->Status == ImTextureStatus_OK)
+						tex->Updates.resize(0);
 					tex->Status = ImTextureStatus_WantUpdates;
 					tex->Updates.push_back(req);
 				}
