@@ -411,6 +411,63 @@ void SendDataTexture(const ImTextureRef& textureRef, void* pData, uint16_t width
 }
 
 //=================================================================================================
+// Like SendDataTexture but instructs the server to retain its CPU pixel buffer.
+// Required before any SendDataTextureUpdate calls for the same texture ID.
+//=================================================================================================
+void SendDataTextureCreate(const ImTextureRef& textureRef, void* pData, uint16_t width, uint16_t height, eTexFormat format, uint32_t dataSize)
+//=================================================================================================
+{
+	if (!gpClientInfo) return;
+	Client::ClientInfo& client	= *gpClientInfo;
+	ClientTextureID clientTexID = ConvertToClientTexID(textureRef);
+
+	if( pData != nullptr )
+	{
+		CmdTexture* pCmdTexture	= client.TextureCmdAllocate(clientTexID, width, height, format, dataSize);
+		if( pCmdTexture )
+		{
+			memcpy(pCmdTexture->mpTextureData.Get(), pData, dataSize);
+			pCmdTexture->mUpdatable = true;	// Instruct server to keep CPU pixel buffer alive for future Update patches
+			client.TextureCmdAdd(*pCmdTexture);
+		}
+	}
+	else
+	{
+		client.TextureDestroyCmdAdd(clientTexID);
+	}
+}
+
+//=================================================================================================
+// Patch an existing server texture in-place — no new texture allocation on resend.
+// Requires the texture to have been previously sent via SendDataTextureCreate.
+//=================================================================================================
+void SendDataTextureUpdate(const ImTextureRef& textureRef, void* pData, uint16_t width, uint16_t height, eTexFormat format, uint32_t dataSize)
+//=================================================================================================
+{
+	if (!gpClientInfo) return;
+	Client::ClientInfo& client	= *gpClientInfo;
+	ClientTextureID clientTexID = ConvertToClientTexID(textureRef);
+
+	if( pData != nullptr )
+	{
+		CmdTexture* pCmdTexture	= client.TextureCmdAllocate(clientTexID, width, height, format, dataSize);
+		if( pCmdTexture )
+		{
+			memcpy(pCmdTexture->mpTextureData.Get(), pData, dataSize);
+			pCmdTexture->mStatus		= CmdTexture::eType::Update;
+			pCmdTexture->mUpdatable		= true;
+			pCmdTexture->mCanDeleteCmd	= true;
+			// Bypass TextureCmdAdd to preserve the original Create entry for reconnect resends.
+			client.TextureCmdServerAdd(*pCmdTexture);
+			// Track so ManagedTextureUpdate's cleanup loop can free it once sent.
+			client.mTextureCmdTracked.push_back(pCmdTexture);
+			client.mbTextureCmdUpdated = true;
+		}
+	}
+	// No destroy semantics for Update — use SendDataTexture(ref, nullptr, ...) to remove a texture.
+}
+
+//=================================================================================================
 bool IsTexturePendingSend(const ImTextureRef& textureRef)
 //=================================================================================================
 {
